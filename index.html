@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Playlist Splitter</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; background: #f9f9f9; color: #333; }
+        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        label { display: block; margin-top: 1rem; font-weight: bold; font-size: 0.9rem; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .button-group { margin-top: 1.5rem; display: flex; gap: 1rem; }
+        button { padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; background: #007bff; color: white; transition: background 0.2s; }
+        button:hover { background: #0056b3; }
+        button.secondary { background: #6c757d; }
+        button.secondary:hover { background: #5a6268; }
+        #suggestion-box, #status-box { margin-top: 1rem; padding: 1rem; border-radius: 4px; display: none; }
+        #suggestion-box { background: #e3f2fd; border: 1px solid #b6d4fe; }
+        #status-box { background: #d1e7dd; border: 1px solid #badbcc; }
+        .category-tag { display: inline-block; background: #fff; border: 1px solid #007bff; color: #007bff; padding: 0.2rem 0.5rem; border-radius: 12px; margin: 0.2rem; font-size: 0.8rem;}
+    </style>
+</head>
+<body>
+
+    <h2>🎶 Playlist Splitter</h2>
+
+   <div class="card">
+        <h3>1. Credentials</h3>
+        <label for="yt-api-key">YouTube API Key:</label>
+        <input type="password" id="yt-api-key" placeholder="Enter your YouTube API Key">
+        
+        <label for="gemini-api-key">Gemini API Key:</label>
+        <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API Key">
+
+        <label for="oauth-token">YouTube OAuth Access Token:</label>
+        <input type="password" id="oauth-token" placeholder="Paste temporary Access Token here">
+    </div>
+
+    <div class="card">
+        <h3>2. Source Playlist</h3>
+        <label for="playlist-url">Playlist ID or URL:</label>
+        <input type="text" id="playlist-url" placeholder="e.g., PLxxxxxxxxx...">
+    </div>
+
+    <div class="card">
+        <h3>3. Categories</h3>
+        <p style="font-size: 0.85rem; color: #555;">Enter comma-separated categories, or leave blank to let Gemini suggest up to 5 categories.</p>
+        <label for="custom-categories">Categories (Optional):</label>
+        <input type="text" id="custom-categories" placeholder="e.g., Happy, Sad, Gym, Energy">
+        
+        <div id="suggestion-box">
+            <strong>Suggested Categories:</strong>
+            <div id="suggested-tags"></div>
+            <div class="button-group">
+                <button id="approve-categories-btn">Approve & Continue</button>
+                <button id="reject-categories-btn" class="secondary">Reject & Retry</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="button-group">
+        <button id="process-btn">Split Playlist</button>
+    </div>
+
+    <div id="status-box">
+        <strong>Status:</strong> <span id="status-text">Waiting to start...</span>
+    </div>
+
+    <script type="module" src="/app.ts"></script>
+</body>
+</html>

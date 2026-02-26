@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Secrets and env (never commit API keys or tokens)
+creds.txt
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.idea/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
+
+# TypeScript build output (Vite builds from .ts; tsc may emit these)
+*.js
+!vite.config.js
+*.js.map
+*.d.ts
+*.d.ts.map
