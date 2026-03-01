@@ -4,6 +4,40 @@ import { z } from 'zod';
 import type { SongInfo } from './youtubeUtils';
 
 /**
+ * Sends a sample of songs (e.g. 10) to Gemini and asks for exactly 3 category
+ * names that would best split the playlist. Returns the 3 suggested category names.
+ */
+export async function suggestCategories(songs: SongInfo[], apiKey: string): Promise<string[]> {
+    const google = createGoogleGenerativeAI({ apiKey });
+    const model = google('gemini-2.5-flash');
+
+    const schema = z.object({
+        categories: z.array(z.string()).length(3).describe('Exactly 3 short category names (e.g. mood, genre, or activity) that would split this playlist well'),
+    });
+
+    const promptData = songs.map(song =>
+        `Title: ${song.title} | ${song.description.substring(0, 120)}...`
+    ).join('\n');
+
+    const { object } = await generateObject({
+        model,
+        schema,
+        prompt: `
+You are a music playlist assistant. Below are up to 10 songs from a YouTube playlist (title and short description each).
+
+Suggest exactly 3 category names that would work well to split this playlist into 3 sub-playlists. Categories should be distinct (e.g. by mood, energy, genre, or use case). Use short, clear names (1–3 words each).
+
+Songs:
+${promptData}
+
+Return exactly 3 category names.
+`,
+    });
+
+    return object.categories;
+}
+
+/**
  * Sends a batch of songs to Gemini 2.5 Flash and forces it to categorize
  * them into the provided list of approved categories.
  */

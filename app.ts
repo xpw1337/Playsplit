@@ -1,29 +1,54 @@
-// --- DOM Elements ---
-const ytApiKeyInput = document.getElementById('yt-api-key') as HTMLInputElement;
-const geminiApiKeyInput = document.getElementById('gemini-api-key') as HTMLInputElement;
-const playlistUrlInput = document.getElementById('playlist-url') as HTMLInputElement;
-const customCategoriesInput = document.getElementById('custom-categories') as HTMLInputElement;
+import { fetchAllPlaylistItems, extractPlaylistId, createPlaylist, addVideoToPlaylist } from './youtubeUtils';
+import type { SongInfo } from './youtubeUtils';
+import { classifySongsBatch, suggestCategories } from './geminiUtils';
 
-const processBtn = document.getElementById('process-btn') as HTMLButtonElement;
-const suggestionBox = document.getElementById('suggestion-box') as HTMLDivElement;
-const suggestedTagsDiv = document.getElementById('suggested-tags') as HTMLDivElement;
-const approveCategoriesBtn = document.getElementById('approve-categories-btn') as HTMLButtonElement;
-const rejectCategoriesBtn = document.getElementById('reject-categories-btn') as HTMLButtonElement;
+// --- DOM element refs (set when DOM is ready) ---
+let ytApiKeyInput: HTMLInputElement;
+let geminiApiKeyInput: HTMLInputElement;
+let playlistUrlInput: HTMLInputElement;
+let customCategoriesInput: HTMLInputElement;
+let processBtn: HTMLButtonElement;
+let suggestionBox: HTMLDivElement;
+let suggestedTagsDiv: HTMLDivElement;
+let approveCategoriesBtn: HTMLButtonElement;
+let rejectCategoriesBtn: HTMLButtonElement;
+let statusBox: HTMLDivElement;
+let statusText: HTMLSpanElement;
+let oauthTokenInput: HTMLInputElement;
 
-const statusBox = document.getElementById('status-box') as HTMLDivElement;
-const statusText = document.getElementById('status-text') as HTMLSpanElement;
-// ✅ New way (separates the Type from the Functions)
-import { fetchAllPlaylistItems, extractPlaylistId, createPlaylist, addVideoToPlaylist } from './youtubeUtils.js';
-import type { SongInfo } from './youtubeUtils.js';
-import { classifySongsBatch } from './geminiUtils.js';
-const oauthTokenInput = document.getElementById('oauth-token') as HTMLInputElement;
 // --- State ---
 let approvedCategories: string[] = [];
 
-// --- Event Listeners ---
-processBtn.addEventListener('click', handleProcessClick);
-approveCategoriesBtn.addEventListener('click', proceedToSplit);
-rejectCategoriesBtn.addEventListener('click', generateCategories);
+function init() {
+    ytApiKeyInput = document.getElementById('yt-api-key') as HTMLInputElement;
+    geminiApiKeyInput = document.getElementById('gemini-api-key') as HTMLInputElement;
+    playlistUrlInput = document.getElementById('playlist-url') as HTMLInputElement;
+    customCategoriesInput = document.getElementById('custom-categories') as HTMLInputElement;
+    processBtn = document.getElementById('process-btn') as HTMLButtonElement;
+    suggestionBox = document.getElementById('suggestion-box') as HTMLDivElement;
+    suggestedTagsDiv = document.getElementById('suggested-tags') as HTMLDivElement;
+    approveCategoriesBtn = document.getElementById('approve-categories-btn') as HTMLButtonElement;
+    rejectCategoriesBtn = document.getElementById('reject-categories-btn') as HTMLButtonElement;
+    statusBox = document.getElementById('status-box') as HTMLDivElement;
+    statusText = document.getElementById('status-text') as HTMLSpanElement;
+    oauthTokenInput = document.getElementById('oauth-token') as HTMLInputElement;
+
+    if (!processBtn || !statusBox || !statusText || !approveCategoriesBtn || !rejectCategoriesBtn) {
+        console.error('Playsplit: required DOM elements not found. Check index.html.');
+        return;
+    }
+
+    processBtn.type = 'button';
+    processBtn.addEventListener('click', handleProcessClick);
+    approveCategoriesBtn.addEventListener('click', proceedToSplit);
+    rejectCategoriesBtn.addEventListener('click', generateCategories);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
 
 // --- Core Functions ---
 
@@ -34,6 +59,7 @@ async function handleProcessClick() {
     const customCategories = customCategoriesInput.value.trim();
 
     if (!ytKey || !geminiKey || !playlistId) {
+        updateStatus("⚠️ Please fill in YouTube API Key, Gemini API Key, and Playlist URL/ID.");
         alert("Please provide both API keys and a Playlist URL/ID.");
         return;
     }
@@ -54,28 +80,37 @@ async function generateCategories() {
     suggestedTagsDiv.innerHTML = '<em>Asking Gemini...</em>';
     processBtn.disabled = true;
 
+    const ytKey = ytApiKeyInput.value.trim();
+    const geminiKey = geminiApiKeyInput.value.trim();
+    const rawPlaylistInput = playlistUrlInput.value.trim();
+
     try {
-        // TODO: 1. Fetch a sample of song titles from the YouTube Playlist
-        // TODO: 2. Send sample to Gemini API to suggest up to 5 categories
+        const playlistId = extractPlaylistId(rawPlaylistInput);
+        updateStatus("Fetching a sample of 10 songs from the playlist...");
+        const allSongs = await fetchAllPlaylistItems(playlistId, ytKey);
+        const sample = allSongs.slice(0, 10);
+        if (sample.length === 0) {
+            updateStatus("No songs found in that playlist.");
+            processBtn.disabled = false;
+            return;
+        }
+        suggestedTagsDiv.innerHTML = '<em>Asking Gemini for 3 categories...</em>';
+        const suggestions = await suggestCategories(sample, geminiKey);
+        approvedCategories = suggestions;
 
-        // Mock response for testing UI
-        setTimeout(() => {
-            const mockSuggestions = ["High Energy", "Chill Vibes", "Melancholy", "Workout Focus"];
-            approvedCategories = mockSuggestions;
-            
-            // Render suggested tags
-            suggestedTagsDiv.innerHTML = '';
-            mockSuggestions.forEach(cat => {
-                const span = document.createElement('span');
-                span.className = 'category-tag';
-                span.innerText = cat;
-                suggestedTagsDiv.appendChild(span);
-            });
-            updateStatus("Review the suggested categories.");
-        }, 1500);
-
-    } catch (error) {
-        updateStatus(`Error: ${error}`);
+        suggestedTagsDiv.innerHTML = '';
+        suggestions.forEach(cat => {
+            const span = document.createElement('span');
+            span.className = 'category-tag';
+            span.innerText = cat;
+            suggestedTagsDiv.appendChild(span);
+        });
+        updateStatus("Review the suggested categories.");
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        updateStatus(`Error: ${message}`);
+    } finally {
+        processBtn.disabled = false;
     }
 }
 
